@@ -136,20 +136,39 @@ def fetch_google_news(keyword="우진산전", max_results=10):
         })
     return articles
 
-# 5. HTML 리포트 생성 함수 (파이썬 f-string 문법 에러 수정)
+# 5. HTML 리포트 생성 함수 (링크 파싱 강화 및 예외 방어 로직 적용)
 def generate_report_html(content_text, keyword):
     kst_now = get_kst_now()
     today_str = kst_now.strftime("%Y년 %m월 %d일")
     
+    # 1. 수평선 기호 제거
     content_text = re.sub(r'^[=\-\*\_]{3,}\s*$', '', content_text, flags=re.MULTILINE)
-    html_body = re.sub(r'\[(.*?)\]\((https?://[^\s\)]+)\)', r'<a href="\2" target="_blank" class="news-link">🔗 \1 ↗</a>', content_text)
+    
+    # 2. 강화된 마크다운 링크 변환 (공백, 띄어쓰기 수용)
+    html_body = re.sub(
+        r'\[\s*(.*?)\s*\]\(\s*(https?://[^\s\)]+)\s*\)', 
+        r'<a href="\2" target="_blank" class="news-link">🔗 \1 ↗</a>', 
+        content_text
+    )
+    
+    # 3. URL만 쌩으로 노출된 경우 방어 파싱
+    html_body = re.sub(
+        r'(?<!href=")(?<!">)(https?://news\.google\.com/rss/articles/[^\s\<]+)',
+        r'<a href="\1" target="_blank" class="news-link">🔗 기사 원문 읽기 ↗</a>',
+        html_body
+    )
+
+    # 4. 볼드 텍스트 변환
     html_body = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_body)
     
+    # 5. 문단 및 요소별 HTML 구조화
     paragraphs = html_body.split('\n')
     formatted_p = []
     for p in paragraphs:
         p_str = p.strip()
-        if not p_str: continue
+        if not p_str: 
+            continue
+            
         if p_str.startswith('###') or p_str.startswith('##'):
             clean_title = re.sub(r'^#+\s*', '', p_str)
             formatted_p.append(f'<h3 class="section-title">{clean_title}</h3>')
@@ -245,11 +264,14 @@ def generate_report_html(content_text, keyword):
                 font-weight: 600; 
                 text-decoration: none; 
                 display: inline-block; 
-                margin-top: 4px; 
+                margin-top: 6px; 
                 word-break: break-all;
             }}
+            .news-link:hover {{
+                text-decoration: underline;
+                color: var(--primary);
+            }}
             
-            /* 모바일 전용 스타일링 (중괄호 이중화로 문법 에러 처리) */
             @media (max-width: 480px) {{
                 body {{ padding: 8px 4px; }}
                 .header {{ padding: 18px 14px; }}
