@@ -9,7 +9,7 @@ from groq import Groq
 
 # 1. 페이지 기본 설정
 st.set_page_config(
-    page_title="우진산전 뉴스 기사 조회", 
+    page_title="우진산전 기사 브리핑룸", 
     page_icon="🚅", 
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -275,14 +275,13 @@ def generate_report_html(content_text, keyword):
 # 6. 대시보드형 헤더 레이아웃
 st.markdown("""
 <div class="header-card">
-    <div class="header-title">🚅 우진산전 주간 브리퍼</div>
+    <div class="header-title">🚅 우진산전 주간 뉴스</div>
     <div class="header-desc">
         실시간 구글 뉴스 RSS와 AI 분석 엔진을 결합하여, 클릭 순간 기준 최근 1주일간의 핵심 기업 동향 보고서를 생성합니다.
     </div>
     <div class="tag-container">
         <span class="info-tag">📌 Target: 우진산전</span>
         <span class="info-tag">📅 Range: 최근 7일</span>
-        <span class="info-tag">⚡ Engine: Gemini 2.5 Flash</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
