@@ -25,16 +25,14 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY.startswith("gsk_") else
 def get_kst_now():
     return datetime.now(timezone(timedelta(hours=9)))
 
-# 3. Streamlit 앱 자체 Custom CSS (Streamlit UI 디자인)
+# 3. Streamlit 앱 자체 Custom CSS
 st.markdown("""
 <style>
-    /* 전체 배경 및 폰트 설정 */
     .stApp {
         background-color: #0F172A;
         color: #F8FAFC;
     }
     
-    /* 상단 헤더 카드 */
     .header-card {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         border: 1px solid #334155;
@@ -60,7 +58,6 @@ st.markdown("""
         line-height: 1.5;
     }
     
-    /* 태그 및 정보 배지 */
     .tag-container {
         display: flex;
         flex-wrap: wrap;
@@ -78,7 +75,6 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* 메인 버튼 스타일링 */
     div.stButton > button {
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         color: #FFFFFF !important;
@@ -96,7 +92,6 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6) !important;
     }
 
-    /* 다운로드 버튼 스타일링 */
     div.stDownloadButton > button {
         background-color: #1E293B !important;
         color: #38BDF8 !important;
@@ -106,7 +101,6 @@ st.markdown("""
         padding: 10px 16px !important;
     }
 
-    /* 모바일 반응형 조절 */
     @media (max-width: 640px) {
         .header-card {
             padding: 18px;
@@ -136,7 +130,7 @@ def fetch_google_news(keyword="우진산전", max_results=10):
         })
     return articles
 
-# 5. HTML 리포트 생성 함수 (링크 파싱 강화 및 예외 방어 로직 적용)
+# 5. HTML 리포트 생성 함수 (링크 파싱 안전 수술 완료)
 def generate_report_html(content_text, keyword):
     kst_now = get_kst_now()
     today_str = kst_now.strftime("%Y년 %m월 %d일")
@@ -144,24 +138,24 @@ def generate_report_html(content_text, keyword):
     # 1. 수평선 기호 제거
     content_text = re.sub(r'^[=\-\*\_]{3,}\s*$', '', content_text, flags=re.MULTILINE)
     
-    # 2. 강화된 마크다운 링크 변환 (공백, 띄어쓰기 수용)
-    html_body = re.sub(
-        r'\[\s*(.*?)\s*\]\(\s*(https?://[^\s\)]+)\s*\)', 
-        r'<a href="\2" target="_blank" class="news-link">🔗 \1 ↗</a>', 
-        content_text
-    )
-    
-    # 3. URL만 쌩으로 노출된 경우 방어 파싱
-    html_body = re.sub(
-        r'(?<!href=")(?<!">)(https?://news\.google\.com/rss/articles/[^\s\<]+)',
-        r'<a href="\1" target="_blank" class="news-link">🔗 기사 원문 읽기 ↗</a>',
-        html_body
-    )
+    # 2. 마크다운 링크 [텍스트](URL) 형태 안전 치환 (중복 치환 방지)
+    def link_replacer(match):
+        label = match.group(1).strip()
+        url = match.group(2).strip()
+        # 이미 <a> 태그나 이상한 텍스트가 들어간 경우 정제
+        label = re.sub(r'<[^>]+>', '', label)
+        label = label.replace('🔗', '').replace('↗', '').strip()
+        if not label:
+            label = "기사 원문 읽기"
+        return f'<a href="{url}" target="_blank" class="news-link">🔗 {label} ↗</a>'
 
-    # 4. 볼드 텍스트 변환
+    # 링크 치환 단 1회만 정확하게 수행
+    html_body = re.sub(r'\[(.*?)\]\((https?://[^\s\)]+)\)', link_replacer, content_text)
+    
+    # 3. 볼드 텍스트 변환
     html_body = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_body)
     
-    # 5. 문단 및 요소별 HTML 구조화
+    # 4. 문단 및 요소별 HTML 구조화
     paragraphs = html_body.split('\n')
     formatted_p = []
     for p in paragraphs:
@@ -326,7 +320,7 @@ if st.button("🚀 주간 리포트 생성하기", use_container_width=True):
 
 [요구사항]
 1. 절대로 '----', '***', '===' 같은 구분선/수평선 기호를 넣지 말 것.
-2. 각 기사 요약 끝에는 반드시 해당 기사의 원문 링크를 [기사 원문 읽기](원문 URL) 형태로 붙여줄 것.
+2. 각 기사 요약 끝에는 반드시 해당 기사의 원문 링크를 [기사 원문 읽기](원문 URL) 형태로만 붙여줄 것. (링크 텍스트 안에 🔗 나 ↗ 기호를 절대 넣지 말 것)
 3. 수집된 기사들을 내용의 연관성에 따라 2~3개 주요 이슈/테마(예: ### 1. 주요 수주 및 사업 성과, ### 2. 기술 개발 동향 등) 섹션 제목으로 분류하여 작성할 것.
 4. 각 주요 기사별 핵심 내용을 2~3줄로 명확하게 요약할 것.
 5. 맨 마지막에는 ### 3. 주간 종합 시사점 섹션 제목으로 최근 1주일 간의 요약을 작성해 줄 것.
