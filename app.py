@@ -1,15 +1,19 @@
 import os
 import re
 import urllib.parse
-import datetime
 from datetime import datetime, timedelta, timezone
 import feedparser
 import streamlit as st
 from google import genai
 from groq import Groq
 
-# 1. 페이지 기본 설정 및 디자인 스타일
-st.set_page_config(page_title="우진산전 주간 뉴스 브리퍼", page_icon="🚅", layout="centered")
+# 1. 페이지 기본 설정
+st.set_page_config(
+    page_title="우진산전 주간 모빌리티 브리퍼", 
+    page_icon="🚅", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
 # 2. API 키 설정 (Streamlit Secrets 보안 영역에서 로드)
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
@@ -21,7 +25,103 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY.startswith("gsk_") else
 def get_kst_now():
     return datetime.now(timezone(timedelta(hours=9)))
 
-# 3. 뉴스 수집 함수 (최근 7일)
+# 3. 모바일/PC 반응형 Custom CSS
+st.markdown("""
+<style>
+    /* 전체 배경 및 폰트 설정 */
+    .stApp {
+        background-color: #0F172A;
+        color: #F8FAFC;
+    }
+    
+    /* 상단 헤더 카드 */
+    .header-card {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    
+    .header-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: #FFFFFF;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .header-desc {
+        font-size: 13.5px;
+        color: #94A3B8;
+        line-height: 1.5;
+    }
+    
+    /* 태그 및 정보 배지 */
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+    
+    .info-tag {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60A5FA;
+        border: 1px solid rgba(96, 165, 250, 0.3);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* 메인 버튼 스타일링 */
+    div.stButton > button {
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        padding: 14px 20px !important;
+        border-radius: 12px !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4) !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    
+    div.stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6) !important;
+    }
+
+    /* 다운로드 버튼 스타일링 */
+    div.stDownloadButton > button {
+        background-color: #1E293B !important;
+        color: #38BDF8 !important;
+        border: 1px solid #0284C7 !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+        padding: 10px 16px !important;
+    }
+
+    /* 모바일 스크린 반응형 패치 */
+    @media (max-width: 640px) {
+        .header-card {
+            padding: 18px;
+        }
+        .header-title {
+            font-size: 19px;
+        }
+        .header-desc {
+            font-size: 12.5px;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# 4. 뉴스 수집 함수
 def fetch_google_news(keyword="우진산전", max_results=10):
     query = f"{keyword} when:7d"
     encoded_query = urllib.parse.quote(query)
@@ -36,12 +136,11 @@ def fetch_google_news(keyword="우진산전", max_results=10):
         })
     return articles
 
-# 4. HTML 리포트 생성 함수
+# 5. HTML 리포트 생성 함수 (모바일 반응형 CSS 포함)
 def generate_report_html(content_text, keyword):
     kst_now = get_kst_now()
     today_str = kst_now.strftime("%Y년 %m월 %d일")
     
-    # 구분선 제거 및 링크/볼드 마크다운 변환
     content_text = re.sub(r'^[=\-\*\_]{3,}\s*$', '', content_text, flags=re.MULTILINE)
     html_body = re.sub(r'\[(.*?)\]\((https?://[^\s\)]+)\)', r'<a href="\2" target="_blank" class="news-link">🔗 \1 ↗</a>', content_text)
     html_body = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_body)
@@ -67,23 +166,97 @@ def generate_report_html(content_text, keyword):
     <html lang="ko">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
         <style>
-            :root {{ --primary: #1e3a8a; --primary-light: #2563eb; --bg: #f8fafc; --card-bg: #ffffff; --text-main: #0f172a; --text-sub: #334155; --border: #e2e8f0; }}
+            :root {{ 
+                --primary: #1e3a8a; 
+                --primary-light: #2563eb; 
+                --bg: #f8fafc; 
+                --card-bg: #ffffff; 
+                --text-main: #0f172a; 
+                --text-sub: #334155; 
+                --border: #e2e8f0; 
+            }}
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            body {{ font-family: "Pretendard Variable", Pretendard, sans-serif; background-color: var(--bg); color: var(--text-main); line-height: 1.75; padding: 20px; }}
+            body {{ 
+                font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif; 
+                background-color: var(--bg); 
+                color: var(--text-main); 
+                line-height: 1.75; 
+                padding: 16px 8px; 
+            }}
             .wrapper {{ max-width: 800px; margin: 0 auto; }}
-            .header {{ background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; padding: 30px; border-radius: 16px; margin-bottom: 20px; }}
-            .badge {{ display: inline-block; background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-bottom: 10px; border: 1px solid rgba(96, 165, 250, 0.3); }}
-            .header h1 {{ font-size: 22px; font-weight: 700; margin-bottom: 6px; }}
-            .header .meta-info {{ color: #94a3b8; font-size: 13px; }}
-            .main-card {{ background: var(--card-bg); padding: 30px; border-radius: 16px; border: 1px solid var(--border); }}
-            .section-title {{ font-size: 18px; font-weight: 700; color: var(--primary); margin: 24px 0 14px 0; display: flex; align-items: center; }}
+            .header {{ 
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
+                color: #ffffff; 
+                padding: 24px 20px; 
+                border-radius: 16px; 
+                margin-bottom: 16px; 
+            }}
+            .badge {{ 
+                display: inline-block; 
+                background: rgba(59, 130, 246, 0.2); 
+                color: #60a5fa; 
+                font-size: 11px; 
+                font-weight: 600; 
+                padding: 3px 10px; 
+                border-radius: 20px; 
+                margin-bottom: 8px; 
+                border: 1px solid rgba(96, 165, 250, 0.3); 
+            }}
+            .header h1 {{ font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.5px; }}
+            .header .meta-info {{ color: #94a3b8; font-size: 12.5px; }}
+            .main-card {{ 
+                background: var(--card-bg); 
+                padding: 24px 18px; 
+                border-radius: 16px; 
+                border: 1px solid var(--border); 
+            }}
+            .section-title {{ 
+                font-size: 17px; 
+                font-weight: 700; 
+                color: var(--primary); 
+                margin: 22px 0 12px 0; 
+                display: flex; 
+                align-items: center; 
+            }}
             .main-card > .section-title:first-child {{ margin-top: 0; }}
-            .section-title::before {{ content: ""; display: inline-block; width: 4px; height: 16px; background-color: var(--primary-light); border-radius: 2px; margin-right: 8px; }}
-            .item-card {{ background: #f8fafc; border-left: 3px solid var(--primary-light); padding: 14px 18px; border-radius: 0 10px 10px 0; margin-bottom: 12px; font-size: 14.5px; }}
-            .text-p {{ color: var(--text-sub); font-size: 14.5px; margin-bottom: 12px; }}
-            .news-link {{ color: var(--primary-light); font-weight: 600; text-decoration: none; display: inline-block; margin-top: 4px; }}
+            .section-title::before {{ 
+                content: ""; 
+                display: inline-block; 
+                width: 4px; 
+                height: 15px; 
+                background-color: var(--primary-light); 
+                border-radius: 2px; 
+                margin-right: 8px; 
+            }}
+            .item-card {{ 
+                background: #f8fafc; 
+                border-left: 3px solid var(--primary-light); 
+                padding: 12px 14px; 
+                border-radius: 0 10px 10px 0; 
+                margin-bottom: 10px; 
+                font-size: 14px; 
+            }}
+            .text-p {{ color: var(--text-sub); font-size: 14px; margin-bottom: 10px; }}
+            .news-link {{ 
+                color: var(--primary-light); 
+                font-weight: 600; 
+                text-decoration: none; 
+                display: inline-block; 
+                margin-top: 4px; 
+                word-break: break-all;
+            }}
+            
+            /* 모바일 세부 조정 */
+            @media (max-width: 480px) {
+                body { padding: 8px 4px; }
+                .header { padding: 18px 14px; }
+                .header h1 { font-size: 18px; }
+                .main-card { padding: 16px 12px; }
+                .item-card { font-size: 13.5px; padding: 10px 12px; }
+            }
         </style>
     </head>
     <body>
@@ -91,7 +264,7 @@ def generate_report_html(content_text, keyword):
             <div class="header">
                 <span class="badge">WEEKLY BRIEFING</span>
                 <h1>🚅 우진산전 주간 동향 & 뉴스 브리핑</h1>
-                <div class="meta-info">발행일자: {today_str} | 데이터 출처: 최근 7일간의 미디어 뉴스</div>
+                <div class="meta-info">발행일자: {today_str} | 수집범위: 최근 7일간 미디어 뉴스</div>
             </div>
             <div class="main-card">{final_body}</div>
         </div>
@@ -99,12 +272,24 @@ def generate_report_html(content_text, keyword):
     </html>
     """
 
-# 5. UI 메인 화면 구성
-st.title("🚅 우진산전 주간 뉴스 브리퍼")
-st.caption("버튼을 누르면 버튼을 누른 시점 기준 최근 1주일(7일)간의 기사를 추려 AI 요약 리포트를 생성합니다.")
+# 6. 대시보드형 헤더 레이아웃
+st.markdown("""
+<div class="header-card">
+    <div class="header-title">🚅 우진산전 주간 브리퍼</div>
+    <div class="header-desc">
+        실시간 구글 뉴스 RSS와 AI 분석 엔진을 결합하여, 클릭 순간 기준 최근 1주일간의 핵심 기업 동향 보고서를 생성합니다.
+    </div>
+    <div class="tag-container">
+        <span class="info-tag">📌 Target: 우진산전</span>
+        <span class="info-tag">📅 Range: 최근 7일</span>
+        <span class="info-tag">⚡ Engine: Gemini 2.5 Flash</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-if st.button("🚀 최근 1주일 브리핑 생성", type="primary", use_container_width=True):
-    with st.spinner("최근 1주일 간의 우진산전 기사를 수집하고 AI 리포트를 생성 중입니다..."):
+# 7. 실행 버튼 영역
+if st.button("🚀 주간 브리핑 리포트 생성하기", use_container_width=True):
+    with st.spinner("최근 1주일 간의 우진산전 기사를 수집하고 AI 리포트를 정돈 중입니다..."):
         articles = fetch_google_news("우진산전", max_results=10)
         
         if not articles:
@@ -148,9 +333,10 @@ if st.button("🚀 최근 1주일 브리핑 생성", type="primary", use_contain
 
             html_report = generate_report_html(res_text, "우진산전")
             
-            # 6. 화면 표시 및 다운로드 버튼 제공
+            # 결과 표시 (모바일 스크롤 지원)
             st.components.v1.html(html_report, height=750, scrolling=True)
             
+            # 파일 다운로드 버튼
             st.download_button(
                 label="📥 HTML 보고서 파일 다운로드",
                 data=html_report,
