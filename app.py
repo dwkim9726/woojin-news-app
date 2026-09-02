@@ -25,7 +25,7 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY.startswith("gsk_") else
 def get_kst_now():
     return datetime.now(timezone(timedelta(hours=9)))
 
-# 3. 모바일/PC 반응형 Custom CSS
+# 3. Streamlit 앱 자체 Custom CSS (Streamlit UI 디자인)
 st.markdown("""
 <style>
     /* 전체 배경 및 폰트 설정 */
@@ -106,7 +106,7 @@ st.markdown("""
         padding: 10px 16px !important;
     }
 
-    /* 모바일 스크린 반응형 패치 */
+    /* 모바일 반응형 조절 */
     @media (max-width: 640px) {
         .header-card {
             padding: 18px;
@@ -136,7 +136,7 @@ def fetch_google_news(keyword="우진산전", max_results=10):
         })
     return articles
 
-# 5. HTML 리포트 생성 함수 (모바일 반응형 CSS 포함)
+# 5. HTML 리포트 생성 함수 (파이썬 f-string 문법 에러 수정)
 def generate_report_html(content_text, keyword):
     kst_now = get_kst_now()
     today_str = kst_now.strftime("%Y년 %m월 %d일")
@@ -249,14 +249,14 @@ def generate_report_html(content_text, keyword):
                 word-break: break-all;
             }}
             
-            /* 모바일 세부 조정 */
-            @media (max-width: 480px) {
-                body { padding: 8px 4px; }
-                .header { padding: 18px 14px; }
-                .header h1 { font-size: 18px; }
-                .main-card { padding: 16px 12px; }
-                .item-card { font-size: 13.5px; padding: 10px 12px; }
-            }
+            /* 모바일 전용 스타일링 (중괄호 이중화로 문법 에러 처리) */
+            @media (max-width: 480px) {{
+                body {{ padding: 8px 4px; }}
+                .header {{ padding: 18px 14px; }}
+                .header h1 {{ font-size: 18px; }}
+                .main-card {{ padding: 16px 12px; }}
+                .item-card {{ font-size: 13.5px; padding: 10px 12px; }}
+            }}
         </style>
     </head>
     <body>
