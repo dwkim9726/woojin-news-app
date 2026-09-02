@@ -130,7 +130,7 @@ def fetch_google_news(keyword="우진산전", max_results=10):
         })
     return articles
 
-# 5. HTML 리포트 생성 함수 (줄바꿈이 낀 마크다운 링크 전면 방어)
+# 5. HTML 리포트 생성 함수 (링크 변환 완전 세척 알고리즘)
 def generate_report_html(content_text, keyword):
     kst_now = get_kst_now()
     today_str = kst_now.strftime("%Y년 %m월 %d일")
@@ -138,34 +138,33 @@ def generate_report_html(content_text, keyword):
     # 1. 수평선 기호 제거
     content_text = re.sub(r'^[=\-\*\_]{3,}\s*$', '', content_text, flags=re.MULTILINE)
     
-    # 2. 줄바꿈/엔터가 중간에 들어간 마크다운 링크 [제목]\n(URL) 완벽 치환
-    def multiline_link_replacer(match):
-        label = match.group(1).strip()
-        url = match.group(2).strip()
-        # 불필요한 태그/이모티콘 세척
-        label = re.sub(r'<[^>]+>', '', label)
-        label = label.replace('🔗', '').replace('↗', '').strip()
-        if not label:
-            label = "기사 원문 읽기"
-        return f'<a href="{url}" target="_blank" class="news-link">🔗 {label} ↗</a>'
-
-    # re.DOTALL 플래그를 통해 [제목]과 (URL) 사이에 줄바꿈이 있어도 1개의 링크로 감지
-    html_body = re.sub(
-        r'\[\s*(.*?)\s*\][\s\n]*\(\s*(https?://[^\s\)]+)\s*\)', 
-        multiline_link_replacer, 
-        content_text, 
-        flags=re.DOTALL
-    )
+    # 2. AI가 생성해버린 엉킨 [기사 원문 읽기] 텍스트 잔여물 전면 삭제
+    content_text = re.sub(r'\[\s*기사\s*원문\s*읽기\s*\]', '', content_text)
     
-    # 3. 볼드 텍스트 변환
+    # 3. 모든 형태의 URL(구글 뉴스 링크 포함)을 추출하여 1개의 단일 <a> 태그 버튼으로 치환
+    def clean_url_replacer(match):
+        raw_url = match.group(0).strip()
+        # 괄호나 따옴표 등 URL 끝에 붙은 불필요 기호 세척
+        clean_url = re.sub(r'[\)\>\s]+$', '', raw_url)
+        clean_url = re.sub(r'^[\(\<]+', '', clean_url)
+        return f'<br><a href="{clean_url}" target="_blank" class="news-link">🔗 기사 원문 읽기 ↗</a>'
+
+    # URL 패턴 감지 및 하이퍼링크 화 (중복 URL 방지)
+    html_body = re.sub(r'https?://[^\s\<\>"\']+', clean_url_replacer, content_text)
+    
+    # 4. 남아있는 비어있는 마크다운 괄호 () [] 정리
+    html_body = re.sub(r'\(\s*\)', '', html_body)
+    html_body = re.sub(r'\[\s*\]', '', html_body)
+    
+    # 5. 볼드 텍스트 변환
     html_body = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', html_body)
     
-    # 4. 문단 및 요소별 HTML 구조화
+    # 6. 문단 및 요소별 HTML 구조화
     paragraphs = html_body.split('\n')
     formatted_p = []
     for p in paragraphs:
         p_str = p.strip()
-        if not p_str: 
+        if not p_str or p_str == '<br>': 
             continue
             
         if p_str.startswith('###') or p_str.startswith('##'):
@@ -325,8 +324,7 @@ if st.button("🚀 주간 리포트 생성하기", use_container_width=True):
 
 [요구사항]
 1. 절대로 '----', '***', '===' 같은 구분선/수평선 기호를 넣지 말 것.
-2. 각 기사 요약 끝에는 반드시 해당 기사의 원문 링크를 [기사 원문 읽기](원문 URL) 형태로 붙여줄 것.
-   - 매우 중요: [기사 원문 읽기]와 (원문 URL) 사이에 절대로 줄바꿈(엔터)을 넣지 말고 한 줄로 이어 쓸 것!
+2. 각 기사 요약 마지막 줄에는 반드시 해당 기사의 원문 URL 주소만 깔끔하게 적어줄 것. (예: 원문 출처: URL주소)
 3. 수집된 기사들을 내용의 연관성에 따라 2~3개 주요 이슈/테마(예: ### 1. 주요 수주 및 사업 성과, ### 2. 기술 개발 동향 등) 섹션 제목으로 분류하여 작성할 것.
 4. 각 주요 기사별 핵심 내용을 2~3줄로 명확하게 요약할 것.
 5. 맨 마지막에는 ### 3. 주간 종합 시사점 섹션 제목으로 최근 1주일 간의 요약을 작성해 줄 것.
