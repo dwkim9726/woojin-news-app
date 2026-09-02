@@ -9,7 +9,7 @@ from groq import Groq
 
 # 1. 페이지 기본 설정
 st.set_page_config(
-    page_title="우진산전 주간 모빌리티 브리퍼", 
+    page_title="우진산전 뉴스 기사 조회", 
     page_icon="🚅", 
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -288,7 +288,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 7. 실행 버튼 영역
-if st.button("🚀 주간 브리핑 리포트 생성하기", use_container_width=True):
+if st.button("🚀 주간 리포트 생성하기", use_container_width=True):
     with st.spinner("최근 1주일 간의 우진산전 기사를 수집하고 AI 리포트를 정돈 중입니다..."):
         articles = fetch_google_news("우진산전", max_results=10)
         
